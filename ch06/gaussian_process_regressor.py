@@ -21,6 +21,8 @@ class GaussianProcessRegressor:
         :param learning_rate: initial learning rate
         :return: None
         """
+        if X.ndim == 1:
+            X = X[:, None]
         self.X = X
         t = t.reshape(-1)
         self.t = t
@@ -28,6 +30,8 @@ class GaussianProcessRegressor:
         I = np.eye(X.shape[0])
         self.covariance = Gram + 1 / self.beta * I
         self.precision = np.linalg.inv(self.covariance)
+        if iter_max is None:
+            return
         last_likelihood = -np.Inf
         for i in range(iter_max):
             covariacne_gradients = self.kernel.gradients(X, X)
@@ -41,7 +45,7 @@ class GaussianProcessRegressor:
             )  # update rule according to (6.70)
             # shape: (n_kernel_params, )
             for j in range(iter_max):
-                self.kernel.update_parameters(learning_rate * updates)
+                self.kernel.update_params(learning_rate * updates)
                 Gram = self.kernel(X, X)
                 self.covariance = Gram + 1 / self.beta * I
                 self.precision = np.linalg.inv(self.covariance)
@@ -54,7 +58,7 @@ class GaussianProcessRegressor:
                     # performance has decreased
                     # undo update
                     # learning rate decay
-                    self.kernel.update_parameters(-learning_rate * updates)
+                    self.kernel.update_params(-learning_rate * updates)
                     learning_rate *= 0.9
 
     def _log_likelihood(self):
@@ -76,6 +80,8 @@ class GaussianProcessRegressor:
         prediction mean: (sample_size, )
         (optional) variance: (sample_size, )
         """
+        if X.ndim == 1:
+            X = X[:, None]
         K = self.kernel(self.X, X)
         # shape: (training_set_size, X_sample_size)
         prediction_mean = K.T.dot(self.precision).dot(self.t)

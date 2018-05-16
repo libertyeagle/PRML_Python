@@ -7,7 +7,7 @@ class GaussianProcessClassifier:
         """
         construct gaussian process classifier
         :param kernel: kernel function
-        :param pseudo_noise_level: noise level (\upsilon)
+        :param pseudo_noise_level: noise level (\\upsilon)
         """
         self.kernel = kernel
         self.pseudo_noise_level = pseudo_noise_level
@@ -35,7 +35,9 @@ class GaussianProcessClassifier:
         self.covariance = Gram + I * self.pseudo_noise_level
         self.precision = np.linalg.inv(self.covariance)
         if (iter_max is None):
+            self.learn_hyper_params = False
             return
+        self.learn_hyper_params = True
         a_N = np.zeros(X.shape[0])
         sigmoid_N = self._sigmoid(a_N)
         w_N = np.diagflat(sigmoid_N)
@@ -62,7 +64,7 @@ class GaussianProcessClassifier:
         last_loglikehood = -np.Inf
 
         for i in range(iter_max):
-            covarience_gradients = self.kernel.derivatives(X, X)
+            covarience_gradients = self.kernel.gradients(X, X)
             # (n_kernel_params, N, N)
             # notice that noise_like term does not have gradient, pseudo_noise_level is fixed
             updates_part_1 = np.array(
@@ -94,7 +96,7 @@ class GaussianProcessClassifier:
 
             updates = updates_part_1 + updates_part_2
             for j in range(iter_max):
-                self.kernel.update_parameters(learning_rate * updates)
+                self.kernel.update_params(learning_rate * updates)
                 Gram = self.kernel(X, X)
                 self.covariance = Gram + I * self.pseudo_noise_level
                 self.precision = np.linalg.inv(self.covariance)
@@ -105,7 +107,7 @@ class GaussianProcessClassifier:
                     break
                 else:
                     # undo
-                    self.kernel.update_parameters(-learning_rate * updates)
+                    self.kernel.update_params(-learning_rate * updates)
                     learning_rate *= 0.9
 
     def _log_likelihood(self):
@@ -124,8 +126,12 @@ class GaussianProcessClassifier:
         :param with_error:
         :return:
         """
+        if X.ndim == 1:
+            X = X[:, None]
         K = self.kernel(self.X, X)
         # shape: (training_set_size, X_sample_size)
+        if not self.learn_hyper_params:
+            return self._sigmoid(K.T.dot(self.precision).dot(self.t))
         prediction_mean = K.T.dot(self.precision).dot(self.t - self.sigmoid_N)
         if with_error:
             variance = (
