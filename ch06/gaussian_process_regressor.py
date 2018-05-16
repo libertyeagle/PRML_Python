@@ -18,6 +18,7 @@ class GaussianProcessRegressor:
         :param X: features, (sample_size, n_features)
         :param t: obeserved labels (sample_size, )
         :param iter_max: if set to None, will not learn hyperparameters
+        :param learning_rate: initial learning rate
         :return: None
         """
         self.X = X
@@ -48,6 +49,7 @@ class GaussianProcessRegressor:
                 if log_likelihood > last_likelihood:
                     last_likelihood = log_likelihood
                     print("iteration {:d}, log likelihood {:f}".format(i, log_likelihood))
+                    break
                 else:
                     # performance has decreased
                     # undo update
@@ -83,6 +85,7 @@ class GaussianProcessRegressor:
                     + 1 / self.beta
                     - np.diag(K.T.dot(self.precision).dot(K))
             )
+            # formula (6.67)
             return prediction_mean, variance
 
         return prediction_mean
